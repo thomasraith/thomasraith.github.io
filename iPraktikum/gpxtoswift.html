@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="GPX to Swift Array Converter for TUM iPraktikum WS2017/18 Quattro Mobile App">
+    <meta name="author" content="Thomas Raith">
+    <title>GPX to Swift Array Converter for TUM iPraktikum WS2017/18 Quattro Mobile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0-beta/css/bootstrap.css" />
+    <style>
+        body {
+            padding-top: 5rem;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand" href="#">GPX to CoreLocation Converter</a>
+</nav>
+
+<main role="main" class="container">
+    <h3>Hello 👋</h3>
+    On this page you can parse GPX Files to a Swift array.<br />
+    Simply plan your route <a href="https://gpxgenerator.com/" alt="GPX Generator">here</a> and insert the GPX Output below.
+    <p>
+        <div class="card">
+            <div class="card-header">
+                GPX File Input
+            </div>
+            <div class="card-body">
+                <p><input type="text" class="form-control" id="routeName" placeholder="Title of Route in camelCase"></p>
+                <div id="editor" style="width: 100%; height: 250px;"></div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary" style="float: right !important;" id="convertButton">Convert</button>
+            </div>
+        </div>
+    </p>
+    <p>
+        <div class="card" id="output-card" style="display: none;">
+            <div class="card-header">
+                Swift Code Output
+            </div>
+            <div class="card-body">
+                <div id="editorOut" style="width: 100%; height: 250px;">
+                </div>
+            </div>
+        </div>
+    </pre>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.9/ace.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.9/theme-xcode.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.9/mode-xml.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<script type="text/babel">
+    const editor = ace.edit("editor");
+    editor.setTheme("ace/theme/xcode");
+    editor.getSession().setMode("ace/mode/xml");
+
+    const editorOut = ace.edit("editorOut");
+    editorOut.setTheme("ace/theme/xcode");
+    editorOut.getSession().setMode("ace/mode/swift");
+
+    $('#convertButton').on('click', function () {
+        parseGPXFile();
+    });
+
+    const parseGPXFile = () => {
+        let fileContent = editor.getValue();
+        let parser = new DOMParser();
+        let xmlDoc = parser.parseFromString(fileContent, 'text/xml');
+        let nodes = Array.from(xmlDoc.getElementsByTagName('wpt'));
+        let points = nodes.map((node) => {
+            let altNode = Array.from(node.childNodes).filter((childNode) => childNode.nodeName === 'ele');
+            if (altNode.length < 1) {
+                alert('No altitude found in GPX file!\nAborted ...');
+            }
+            let alt = altNode[0].textContent;
+            return {lat: node.getAttribute('lat'), lon: node.getAttribute('lon'), alt: +alt}
+        });
+        generateSwiftCLArray(points);
+    };
+
+    const generateSwiftCLArray = (points) => {
+        let routeName = $('#routeName').val();
+        routeName = routeName.length > 0 ? routeName : 'routeToNowhere';
+        let codeString = `public static let ${routeName} = [\n`;
+
+        points.map((point) => {
+            codeString = `${codeString}    LocationNode(CLLocation(coordinate: CLLocationCoordinate2DMake(${point.lat}, ${point.lon}), altitude: ${point.alt})),\n`
+        });
+
+        codeString = `${codeString.slice(0, -2)}\n]`;
+
+        //$('#output').text(codeString);
+        editorOut.setValue(codeString);
+        $('#output-card').show();
+    };
+</script>
+</body>
+</html>
